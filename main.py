@@ -15,6 +15,7 @@ class CurrentPlayer():
         self.char = ' ☻ '
         self.continue_game = True
         self.same_floor = True
+        self.floor = 1
         
 
 
@@ -36,9 +37,6 @@ class AllRooms():
 
 
 
-DOORS_CREATING_ROOM = defaultdict(tuple)
-        
-room_total = AllRooms()
 
 def MakeGrid():
     base = [[' 0 ' for x in range(WIDTH)] for y in range(HEIGHT)]
@@ -300,7 +298,7 @@ def CreateSingularPath(current_room, closest_room):
         BASE[current_room.y+1][current_room.x] = ' + '
         BASE[closest_room.y+1][closest_room.width-1] = ' + '
         DOORS_CREATING_ROOM[(closest_room.width-1, closest_room.y+1)] = closest_room
-        DOORS_CREATING_ROOM[(current_room.x+1, current_room.length-1)] = current_room
+        DOORS_CREATING_ROOM[(current_room.x, current_room.y+1)] = current_room
         while starty != endy or startx != endx:
 
             BASE[starty][startx] = '###'
@@ -502,6 +500,7 @@ def UpdateGame():
             else:
                 print(MAP[y][x], end='')
         print()
+    print(f"Floor {Player.floor}")
 
 def UpdateGame2():
     #os.system('cls')
@@ -532,7 +531,7 @@ def Main():
 
 
     FirstRoomCreation()
-    num_rooms = randint(10, 12)
+    num_rooms = randint(10, 10  )
     for i in range(num_rooms):
         CreateNextRooms()
     room_total.room_count = len(room_total.rooms)
@@ -550,16 +549,19 @@ def Main():
         CheckOpenRoom()
         CreateNewFloor()
         UpdateGame()
-
+    Player.floor += 1
+    Player.x = 1
+    Player.y = 1
+    Player.same_floor = True    
 
 if __name__ == '__main__':
+    Player = CurrentPlayer(1, 1)
     while game:
         obj = ' · '
         new_floor_pos = (10000, 10000)
         count_room = 0
-        Player = CurrentPlayer(1, 1)
         SEEN = set()
-
+        DOORS_CREATING_ROOM = defaultdict(tuple)
         BASE = MakeGrid()
         MAP = MakeGrid()
         room_placements = MakeGrid()
