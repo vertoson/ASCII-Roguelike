@@ -56,7 +56,6 @@ def clear():
 
 def MakeGrid():
     base = [[' 0 ' for x in range(WIDTH)] for y in range(HEIGHT)]
-    base[Player.y][Player.x] = Player.char
     return base
 
 
@@ -101,12 +100,30 @@ def PlayerMovement():
     
 
 
+
 def FirstRoomCreation():
+    global BASE
+    x = randint(0, WIDTH-1)
+    y = randint(0, HEIGHT-1)
     length = randint(6, 12)
     width = randint(6, 12)
-    new_room = Room(0, 0, width, length)
-    room_total.rooms.append(new_room)
+    while x+width >= WIDTH:
+        x = randint(0, WIDTH-1)
+        width = randint(6, 12)
+    while y+length >= HEIGHT:   
+        y = randint(0, HEIGHT-1)
+        length = randint(6, 12)
+    
+    length = y + length
+    width = x + width
+    Player.x = randint(x+1, width-2)
+    Player.y = randint(y+1, length-2)
 
+
+    BASE[Player.y][Player.x] = Player.char
+    MAP[Player.y][Player.x] = Player.char
+    new_room = Room(x, y, width, length)
+    room_total.rooms.append(new_room)
 
 def CreateNextRooms():
     pos_y = randint(0, HEIGHT-7)
@@ -192,11 +209,11 @@ def CreateSingularPath(current_room, closest_room):
     #UpdateGame()
     #UpdateGame2()
     if path == 'R':
-
+        
         startx = current_room.width
-        starty = current_room.y+1
+        starty = randint(current_room.y+1, current_room.length-2)
         endx = closest_room.x-1
-        endy = closest_room.y+1
+        endy = randint(closest_room.y+1, closest_room.length-2)
 
         start_pos_x = min([startx, endx])
         start_pos_y = min([starty, endy])
@@ -209,47 +226,49 @@ def CreateSingularPath(current_room, closest_room):
                     SEEN.add(room_placements[y][x])
                     #UpdateGame2()
                     CreateSingularPath(totalrooms_for_changerooms[int(room_placements[y][x])], closest_room)
+
                     #print(SEEN)
                     return closest_room
-                
-        
-        BASE[current_room.y+1][current_room.width-1] = ' + '
-        BASE[closest_room.y+1][closest_room.x] = ' + '
-        DOORS_CREATING_ROOM[(closest_room.x, closest_room.y+1)] = closest_room
-        DOORS_CREATING_ROOM[(current_room.width-1, current_room.y+1)] = current_room
+                elif room_placements[y][x].isdigit() and room_placements[y][x] != current_room_array_pos and room_placements[y][x] != closest_room_array_pos and totalrooms_for_changerooms[int(room_placements[y][x])] not in SEEN:
+                    SEEN.add(current_room)
+                    closest_room = CreateSingularPath(current_room, totalrooms_for_changerooms[int(room_placements[y][x])])
+
+
+                    return closest_room
+        BASE[starty][startx-1] = ' + '
+        BASE[endy][endx+1] = ' + '
+        DOORS_CREATING_ROOM[(endx+1, endy)] = closest_room
+        DOORS_CREATING_ROOM[(startx-1, starty)] = current_room
+        b = 0
         while startx != endx or starty != endy:
 
+            b += 1
+            if b == 1000:
+                print(starty, endy, startx, endx)
+                UpdateGame()
             BASE[starty][startx] = '###'
             #UpdateGame()
             #print("R")
-            if BASE[starty][startx+1] not in available_space and startx != endx:
-                c += 1
-                if starty > endy:
-                    starty -= 1
-                elif starty < endy:
-                    starty += 1                   
-                
-                if c >= 500:
-                    UpdateGame()
 
-            elif startx > endx and BASE[starty][startx-1] in available_space:
+
+
+
+            if startx > endx and BASE[starty][startx-1] in available_space:
                 startx -= 1
             elif startx < endx and BASE[starty][startx+1] in available_space:
-                startx += 1
+                startx += 1  
             elif starty > endy and BASE[starty-1][startx] in available_space:
                 starty -= 1
             elif starty < endy and BASE[starty+1][startx] in available_space:
                 starty += 1
-
-            
         BASE[starty][startx] = '###'
             
     elif path == 'D':
 
         starty = current_room.length
-        startx = current_room.x+1
+        startx = randint(current_room.x+1, current_room.width-2)
         endy = closest_room.y-1
-        endx = closest_room.x+1
+        endx = randint(closest_room.x+1, closest_room.width-2)
         start_pos_x = min([startx, endx])
         start_pos_y = min([starty, endy])
         end_pos_x = max([startx, endx])
@@ -262,25 +281,32 @@ def CreateSingularPath(current_room, closest_room):
                     CreateSingularPath(totalrooms_for_changerooms[int(room_placements[y][x])], closest_room)
                     #print(SEEN)
                     return closest_room
-       
-        BASE[current_room.length-1][current_room.x+1] = ' + '
-        BASE[closest_room.y][closest_room.x+1] = ' + '
-        DOORS_CREATING_ROOM[(closest_room.x+1, closest_room.y)] = closest_room
-        DOORS_CREATING_ROOM[(current_room.x+1, current_room.length-1)] = current_room
-        while starty != endy or startx != endx:
+                elif room_placements[y][x].isdigit() and room_placements[y][x] != current_room_array_pos and room_placements[y][x] != closest_room_array_pos and totalrooms_for_changerooms[int(room_placements[y][x])] not in SEEN:
+                    SEEN.add(current_room)
+                    closest_room = CreateSingularPath(current_room, totalrooms_for_changerooms[int(room_placements[y][x])])
+
+                    return closest_room
+        BASE[starty-1][startx] = ' + '
+        BASE[endy+1][endx] = ' + '
+        DOORS_CREATING_ROOM[(endx, endy+1)] = closest_room
+        DOORS_CREATING_ROOM[(startx, starty-1)] = current_room
+        b = 0
+        while startx != endx or starty != endy:
+
+            b += 1
+            if b == 1000:
+                print(starty, endy, startx, endx)
+                UpdateGame()
             BASE[starty][startx] = '###'
 
             #UpdateGame()
             #print("D")
-            if BASE[starty+1][startx] not in available_space and starty != endy:
-                c += 1
-                if startx > endx:
-                    startx -= 1
-                elif startx < endx:
-                    startx += 1
-                if c >= 500:
-                    UpdateGame()
-            elif starty > endy and BASE[starty-1][startx] in available_space:
+
+                    
+
+
+
+            if starty > endy and BASE[starty-1][startx] in available_space:
                 starty -= 1
             elif starty < endy and BASE[starty+1][startx] in available_space:
                 starty += 1
@@ -288,14 +314,13 @@ def CreateSingularPath(current_room, closest_room):
                 startx -= 1
             elif startx < endx and BASE[starty][startx+1] in available_space:
                 startx += 1
-
         BASE[starty][startx] = '###'
     
     elif path == 'L':
 
-        starty = current_room.y+1
+        starty = randint(current_room.y+1, current_room.length-2)
         startx = current_room.x-1
-        endy = closest_room.y+1
+        endy = randint(closest_room.y+1, closest_room.length-2)
         endx = closest_room.width
 
         start_pos_x = min([startx, endx])
@@ -310,43 +335,47 @@ def CreateSingularPath(current_room, closest_room):
                     CreateSingularPath(totalrooms_for_changerooms[int(room_placements[y][x])], closest_room)
                     #print(SEEN)
                     return closest_room
-        
-        BASE[current_room.y+1][current_room.x] = ' + '
-        BASE[closest_room.y+1][closest_room.width-1] = ' + '
-        DOORS_CREATING_ROOM[(closest_room.width-1, closest_room.y+1)] = closest_room
-        DOORS_CREATING_ROOM[(current_room.x, current_room.y+1)] = current_room
-        while starty != endy or startx != endx:
+                elif room_placements[y][x].isdigit() and room_placements[y][x] != current_room_array_pos and room_placements[y][x] != closest_room_array_pos and totalrooms_for_changerooms[int(room_placements[y][x])] not in SEEN:
+                    SEEN.add(current_room)
+                    closest_room = CreateSingularPath(current_room, totalrooms_for_changerooms[int(room_placements[y][x])])
+                    
+                    return closest_room
+        BASE[starty][startx+1] = ' + '
+        BASE[endy][endx-1] = ' + '
+        DOORS_CREATING_ROOM[(endx-1, endy)] = closest_room
+        DOORS_CREATING_ROOM[(startx+1, starty)] = current_room
+        b = 0
+        while startx != endx or starty != endy:
+          
+            b += 1
+            if b == 1000:
+                print(starty, endy, startx, endx)
+                UpdateGame()
 
             BASE[starty][startx] = '###'
             #UpdateGame()
             #print("L")
-            if BASE[starty][startx-1] not in available_space and startx != endx:
-                c += 1
-                if starty > endy:
-                    starty -= 1
-                elif starty < endy:
-                    starty += 1    
-                if c >= 500:
-                    UpdateGame()
+
+
+
+
+            if startx > endx and BASE[starty][startx-1] in available_space:
+                startx -= 1
+            elif startx < endx and BASE[starty][startx+1] in available_space:
+                startx += 1
 
             elif starty > endy and BASE[starty-1][startx] in available_space:
                 starty -= 1
             elif starty < endy and BASE[starty+1][startx] in available_space:
                 starty += 1
-            elif startx > endx and BASE[starty][startx-1] in available_space:
-                startx -= 1
-            elif startx < endx and BASE[starty][startx+1] in available_space:
-                startx += 1
-
-            
         BASE[starty][startx] = '###'
 
     elif path == 'U':
 
         starty = current_room.y-1
-        startx = current_room.x+1
+        startx = randint(current_room.x+1, current_room.width-2)
         endy = closest_room.length
-        endx = closest_room.x+1
+        endx = randint(closest_room.x+1, closest_room.width-2)
 
         start_pos_x = min([startx, endx])
         start_pos_y = min([starty, endy])
@@ -361,34 +390,41 @@ def CreateSingularPath(current_room, closest_room):
                     CreateSingularPath(totalrooms_for_changerooms[int(room_placements[y][x])], closest_room)
                     #print(SEEN)
                     return closest_room
-        BASE[current_room.y][current_room.x+1] = ' + '
-        BASE[closest_room.length-1][closest_room.x+1] = ' + '
-        DOORS_CREATING_ROOM[(closest_room.x+1, closest_room.length-1)] = closest_room
-        DOORS_CREATING_ROOM[(current_room.x+1, current_room.y)] = current_room
-        while starty != endy or startx != endx:
+                elif room_placements[y][x].isdigit() and room_placements[y][x] != current_room_array_pos and room_placements[y][x] != closest_room_array_pos and totalrooms_for_changerooms[int(room_placements[y][x])] not in SEEN:
+                    SEEN.add(current_room)
+                    closest_room = CreateSingularPath(current_room, totalrooms_for_changerooms[int(room_placements[y][x])])
+                    
+                    return closest_room
+                
+        BASE[starty+1][startx] = ' + '
+        BASE[endy-1][endx] = ' + '
+        DOORS_CREATING_ROOM[(endx, endy-1)] = closest_room
+        DOORS_CREATING_ROOM[(startx, starty+1)] = current_room
+        b = 0
+        while startx != endx or starty != endy:
+            
+            b += 1
+            if b == 1000:
+                print(starty, endy, startx, endx)
+                UpdateGame()
 
+         
             BASE[starty][startx] = '###'
             #UpdateGame()
             #print("U")
                 
-            if BASE[starty-1][startx] not in available_space and starty != endy:
-                c += 1
-                if startx > endx:
-                    startx -= 1
-                elif startx < endx:
-                    startx += 1
-                if c >= 500:
-                    UpdateGame()
-            elif startx > endx and BASE[starty][startx-1] in available_space:
-                startx -= 1
-            elif startx < endx and BASE[starty][startx+1] in available_space:
-                startx += 1
-            elif starty > endy and BASE[starty-1][startx] in available_space:
+
+
+
+
+            if starty > endy and BASE[starty-1][startx] in available_space:
                 starty -= 1
             elif starty < endy and BASE[starty+1][startx] in available_space:
                 starty += 1
-            
-        
+            elif startx > endx and BASE[starty][startx-1] in available_space:
+                startx -= 1
+            elif startx < endx and BASE[starty][startx+1] in available_space:
+                startx += 1 
         BASE[starty][startx] = '###'
     
 
@@ -425,9 +461,12 @@ def CreatePaths():
         closest_room = FindClosestRoom(current_room)
 
         #print(closest_room.x, closest_room.y, closest_room.width, closest_room.length)
-        closest_room = CreateSingularPath(current_room, closest_room)
+        try:
+            closest_room = CreateSingularPath(current_room, closest_room)
+        except RecursionError as err:
+            return False
         times += 1
-
+    return True
         
 def UpdateRooms():
     
@@ -473,12 +512,14 @@ def CheckOpenRoom():
 def UpdateSpecificRoom(room):
  
     global count_room, new_floor_pos
+
     if room.show ==  False:
     
         count_room += 1
         room.show = True
-
+        
     if count_room == room_total.room_count:
+        count_room += 1
         randx = randint(room.x+1, room.width-2)
         randy = randint(room.y+1, room.length-2)
         MAP[randy][randx] = ' ■ '
@@ -519,16 +560,31 @@ def UpdateGame():
             else:
                 color_pair = curses.color_pair(1)
             if MAP[y][x] == ' 0 ':
-                
-                stdscr.addch(y, pos_x, ' ', color_pair)
-                stdscr.addch(y, pos_x+1, ' ', color_pair)
-                stdscr.addch(y, pos_x+2, ' ', color_pair)
+                try:
+                    stdscr.addch(y, pos_x, ' ', color_pair)
+                    stdscr.addch(y, pos_x+1, ' ', color_pair)
+                    stdscr.addch(y, pos_x+2, ' ', color_pair)
+                except curses.error:
+
+                    Player.same_floor = False
+                    game = False
+                    
             else:
-                
-                stdscr.addch(y, pos_x, MAP[y][x][0], color_pair)
-                stdscr.addch(y, pos_x+1, MAP[y][x][1], color_pair)
-                stdscr.addch(y, pos_x+2, MAP[y][x][2],   color_pair)
-    stdscr.addstr(40, 0, f"Floor: {Player.floor}", curses.color_pair(2))
+                try:
+                    stdscr.addch(y, pos_x, MAP[y][x][0], color_pair)
+                    stdscr.addch(y, pos_x+1, MAP[y][x][1], color_pair)
+                    stdscr.addch(y, pos_x+2, MAP[y][x][2],   color_pair)
+                except curses.error:
+
+                    Player.same_floor = False
+                    game = False
+                    
+    try:
+        stdscr.addstr(40, 0, f"Floor: {Player.floor}", curses.color_pair(2))
+    except curses.error:
+
+        Player.same_floor = False
+        game = False
     refresh()
     #print(f"Floor {Player.floor}")
 
@@ -557,34 +613,35 @@ def UpdateGame3():
 
 
 def Main():
-    global total_rooms
+    global total_rooms, room_placements, MAP, BASE, DOORS_CREATING_ROOM, SEEN, count_room, new_floor_pos, obj
 
 
     FirstRoomCreation()
-    num_rooms = randint(10, 15)
+    num_rooms = randint(20, 20)
     for i in range(num_rooms):
         CreateNextRooms()
     room_total.room_count = len(room_total.rooms)
     total_rooms = room_total.rooms.copy()
     UpdateRooms()
-    CreatePaths()
-    UpdateSpecificRoom(room_total.rooms[0])
-    
-    UpdateGame()
-    #UpdateGame3()
-    
-    while Player.same_floor:
-        time.sleep(0.01)
-        PlayerMovement()
-        UpdateCorridorsAndDoors()
-        CheckOpenRoom()
-        CreateNewFloor()
+    check_restart = CreatePaths()
+    if check_restart:
+        UpdateSpecificRoom(room_total.rooms[0])
+        
         UpdateGame()
+        #UpdateGame3()
+        
+        while Player.same_floor:
+            time.sleep(0.01)
+            PlayerMovement()
+            UpdateCorridorsAndDoors()
+            CheckOpenRoom()
+            CreateNewFloor()
+            UpdateGame()
 
-    Player.floor += 1
-    Player.x = 1
-    Player.y = 1
-    Player.same_floor = True    
+        Player.floor += 1
+        Player.x = 1
+        Player.y = 1
+        Player.same_floor = True    
 
 if __name__ == '__main__':
     Player = CurrentPlayer(1, 1)
