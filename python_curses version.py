@@ -12,9 +12,11 @@ curses.curs_set(0)
 curses.start_color()
 curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
 curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)
+curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
-WIDTH = 50  
-HEIGHT = 50
+WIDTH = 56
+HEIGHT = 40
 
 obj = ' · '
 game = True
@@ -44,18 +46,6 @@ class AllRooms():
     def __init__(self):
         self.rooms = []
         self.room_count = 0
-
-def render():
-	clear()
-
-	print(" Minigame Prototype:")
-
-	for x in range(10):
-		for y in range(10):
-			# Add a character to position
-			stdscr.addch(y, x, map[x][y], curses.color_pair(1))
-
-	refresh()
 
 
 def clear():
@@ -166,7 +156,7 @@ def CreateNextRooms():
                 flag = False
         
 
-        if loop_times > 50:
+        if loop_times > 250:
             return False
     
     new_room = Room(pos_x, pos_y, size_x, size_y)
@@ -522,16 +512,23 @@ def UpdateGame():
     for y in range(HEIGHT):
         for x in range(WIDTH):
             pos_x = x*3
+            if MAP[y][x][1] == Player.char[1]:
+                color_pair = curses.color_pair(3)
+            elif MAP[y][x] == ' + ':
+                color_pair = curses.color_pair(4)
+            else:
+                color_pair = curses.color_pair(1)
             if MAP[y][x] == ' 0 ':
                 
-                stdscr.addch(y, pos_x, ' ', curses.color_pair(1))
-                stdscr.addch(y, pos_x+1, ' ', curses.color_pair(1))
-                stdscr.addch(y, pos_x+2, ' ', curses.color_pair(1))
+                stdscr.addch(y, pos_x, ' ', color_pair)
+                stdscr.addch(y, pos_x+1, ' ', color_pair)
+                stdscr.addch(y, pos_x+2, ' ', color_pair)
             else:
                 
-                stdscr.addch(y, pos_x, MAP[y][x][0], curses.color_pair(1))
-                stdscr.addch(y, pos_x+1, MAP[y][x][1], curses.color_pair(1))
-                stdscr.addch(y, pos_x+2, MAP[y][x][2],   curses.color_pair(1))
+                stdscr.addch(y, pos_x, MAP[y][x][0], color_pair)
+                stdscr.addch(y, pos_x+1, MAP[y][x][1], color_pair)
+                stdscr.addch(y, pos_x+2, MAP[y][x][2],   color_pair)
+    stdscr.addstr(40, 0, f"Floor: {Player.floor}", curses.color_pair(2))
     refresh()
     #print(f"Floor {Player.floor}")
 
@@ -564,7 +561,7 @@ def Main():
 
 
     FirstRoomCreation()
-    num_rooms = randint(10, 10)
+    num_rooms = randint(10, 15)
     for i in range(num_rooms):
         CreateNextRooms()
     room_total.room_count = len(room_total.rooms)
