@@ -1,9 +1,16 @@
 from readchar import readchar
 import os
 from random import *
-from collections import defaultdict
+from collections import defaultdict, deque
 import time
 import curses
+import math
+
+########################################################################################################### SECTION INITIALIZE
+
+
+
+
 
 stdscr = curses.initscr()
 refresh = stdscr.refresh
@@ -15,11 +22,26 @@ curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
 curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)
 curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
+EnemyCharList = [' S ']
+
 WIDTH = 56
 HEIGHT = 40
 
+
+
 obj = ' · '
 game = True
+
+class Enemy():
+    def __init__(self, save_obj, char, x, y, health, damage):
+        self.x = x
+        self.y = y
+        self.health = health
+        self.damage = damage
+        self.char = char
+        self.save_obj = save_obj
+
+
 
 class CurrentPlayer():
     def __init__(self, x, y):
@@ -29,6 +51,11 @@ class CurrentPlayer():
         self.continue_game = True
         self.same_floor = True
         self.floor = 1
+        self.fighting = False
+        self.opponent = None
+        self.health = 1000
+        self.damage = 50
+
         
 
 
@@ -47,6 +74,13 @@ class AllRooms():
         self.rooms = []
         self.room_count = 0
 
+class Node:
+    def __init__(self, x, y, came_from):
+        self.x = x
+        self.y = y
+        self.came_from = came_from
+
+
 
 def clear():
 	stdscr.clear()
@@ -57,6 +91,8 @@ def clear():
 def MakeGrid():
     base = [[' 0 ' for x in range(WIDTH)] for y in range(HEIGHT)]
     return base
+
+########################################################################################################### SECTION ENTITIES
 
 
 def PlayerMovement():
@@ -77,12 +113,6 @@ def PlayerMovement():
     elif move.lower() == 'f':
         game = False
         Player.same_floor = False
-
-    
-    
-
-
-    
     if MAP[Player.y][Player.x] == ' | ' or MAP[Player.y][Player.x] == '---' or MAP[Player.y][Player.x] == ' 0 ': 
         Player.x = savex
         Player.y = savey
@@ -96,9 +126,138 @@ def PlayerMovement():
             MAP[Player.y][Player.x] = '>' + Player.char[1] + '<'
         else:
             MAP[Player.y][Player.x] = Player.char
-    
+
     
 
+def SpawnEnemy():
+    global CurrentEnemies
+    available_rooms = []
+    for room in room_total.rooms:
+        if room.show:
+            available_rooms.append(room)
+    if len(available_rooms) < 3:
+        return None
+    shuffle(available_rooms)
+    cur_room = available_rooms[0]
+    x = randint(cur_room.x+1, cur_room.width-2)
+    y = randint(cur_room.y+1, cur_room.length-2)
+    while MAP[y][x] == Player.char:
+        x = randint(cur_room.x+1, cur_room.width-2)
+        y = randint(cur_room.y+1, cur_room.length-2)
+    char = ' S '
+    
+    CurrentEnemies.append(Enemy(' · ', char, x, y, 10, 10))
+    MAP[y][x] = char
+
+
+
+
+
+def MoveEnemy():
+    not_available_pos = [' | ', '---', ' 0 '] 
+    copy_enemies = CurrentEnemies.copy()
+    max_repeats = math.factorial(len(CurrentEnemies))
+    count_repeats = defaultdict(int)
+    while copy_enemies:
+        enemy = copy_enemies.pop(0)
+        Q = deque([Node(enemy.x, enemy.y, None)])
+        SEEN = set()
+        new_map = MAP.copy()
+        backtrack = []
+        new_map = [list(a) for a in new_map]
+        count_repeats[enemy] += 1
+
+        while Q:
+
+            cur = Q.popleft()
+            x = cur.x
+            y = cur.y
+
+            if (x, y) in SEEN:
+                continue
+            if MAP[y][x][1] == Player.char[1]:
+
+                while cur.came_from:
+                    backtrack.append(cur)
+                    cur = cur.came_from
+                break
+
+            if MAP[y][x+1] not in not_available_pos:
+                Q.append(Node(x+1, y, cur))
+            if MAP[y][x-1] not in not_available_pos:
+                Q.append(Node(x-1, y, cur))
+            if MAP[y+1][x] not in not_available_pos:
+                Q.append(Node(x, y+1, cur))
+            if MAP[y-1][x] not in not_available_pos:
+                Q.append(Node(x, y-1, cur))
+            
+        
+            SEEN.add((x, y))
+
+        #print(backtrack[-1].x, backtrack[-1].y, enemy.save_obj)
+        #print(enemy.x, enemy.y, enemy.save_obj)
+
+        if count_repeats[enemy] > max_repeats:
+            continue
+        first_node = backtrack[-1]
+        if MAP[first_node.y][first_node.x] in EnemyCharList:
+            copy_enemies.append(enemy)
+            continue
+        MAP[enemy.y][enemy.x] = enemy.save_obj
+        
+        enemy.save_obj = BASE[first_node.y][first_node.x]
+        MAP[first_node.y][first_node.x] = enemy.char
+        enemy.x = first_node.x
+        enemy.y = first_node.y
+
+        
+
+
+def PlayerAttackingEnemy(enemy):
+
+
+    while enemy.health > 0 and Player.health > 0:
+        UpdateGame()
+        enemy.health -= Player.damage
+        Player.health -= enemy.damage
+        time.sleep(1)
+        
+    Player.fighting = False
+    UpdateGame()
+    if enemy.health <= 0:
+        MAP[enemy.y][enemy.x] = enemy.save_obj
+        CurrentEnemies.remove(enemy)
+    if Player.health <= 0:
+        return False
+    
+    return True
+
+
+
+def CheckAttacking():
+    attack_pos = []
+    for y in range(Player.y-1, Player.y+2):
+        for x in range(Player.x-1, Player.x+2):
+            attack_pos.append((x, y))
+
+    
+    
+    for enemy in CurrentEnemies:
+        #print(attack_pos, enemy.x, enemy.y)
+        if (enemy.x, enemy.y) in attack_pos:
+            
+            Player.fighting = True
+            Player.opponent = enemy
+            alive = PlayerAttackingEnemy(enemy)
+            if not alive:
+                return False
+    return True
+
+            
+                
+    
+    
+########################################################################################################### SECTION ROOMS
 
 
 def FirstRoomCreation():
@@ -120,7 +279,7 @@ def FirstRoomCreation():
     Player.y = randint(y+1, length-2)
 
 
-    BASE[Player.y][Player.x] = Player.char
+    #BASE[Player.y][Player.x] = Player.char
     MAP[Player.y][Player.x] = Player.char
     new_room = Room(x, y, width, length)
     room_total.rooms.append(new_room)
@@ -512,17 +671,19 @@ def CheckOpenRoom():
 def UpdateSpecificRoom(room):
  
     global count_room, new_floor_pos
-
-    if room.show ==  False:
+    
+    if room.show == False:
     
         count_room += 1
         room.show = True
-        
+        SpawnEnemy()
+
     if count_room == room_total.room_count:
         count_room += 1
         randx = randint(room.x+1, room.width-2)
         randy = randint(room.y+1, room.length-2)
         MAP[randy][randx] = ' ■ '
+        BASE[randy][randx] = ' ■ '
         new_floor_pos = (randx, randy)
     for y in range(room.y, room.length):
         for x in range(room.x, room.width):
@@ -546,6 +707,8 @@ def CreateNewFloor():
         Player.same_floor = False
 
 
+########################################################################################################### SECTION DISPLAY
+
 
 def UpdateGame():
     clear()
@@ -560,31 +723,40 @@ def UpdateGame():
             else:
                 color_pair = curses.color_pair(1)
             if MAP[y][x] == ' 0 ':
-                try:
-                    stdscr.addch(y, pos_x, ' ', color_pair)
-                    stdscr.addch(y, pos_x+1, ' ', color_pair)
-                    stdscr.addch(y, pos_x+2, ' ', color_pair)
-                except curses.error:
+                stdscr.addch(y, pos_x, ' ', color_pair)
+                stdscr.addch(y, pos_x+1, ' ', color_pair)
+                stdscr.addch(y, pos_x+2, ' ', color_pair)
 
-                    Player.same_floor = False
-                    game = False
-                    
             else:
-                try:
-                    stdscr.addch(y, pos_x, MAP[y][x][0], color_pair)
-                    stdscr.addch(y, pos_x+1, MAP[y][x][1], color_pair)
-                    stdscr.addch(y, pos_x+2, MAP[y][x][2],   color_pair)
-                except curses.error:
-
-                    Player.same_floor = False
-                    game = False
+      
+                stdscr.addch(y, pos_x, MAP[y][x][0], color_pair)
+                stdscr.addch(y, pos_x+1, MAP[y][x][1], color_pair)
+                stdscr.addch(y, pos_x+2, MAP[y][x][2],   color_pair)
+  
                     
-    try:
-        stdscr.addstr(40, 0, f"Floor: {Player.floor}", curses.color_pair(2))
-    except curses.error:
+    
+    stdscr.addstr(40, 0, f"Floor: {Player.floor}", curses.color_pair(2))
 
-        Player.same_floor = False
-        game = False
+    if Player.health <= 0:
+
+        stdscr.addstr(40, 20, f"You have Died!", curses.color_pair(1))
+        refresh()
+        time.sleep(3)
+
+    elif Player.health > 0:
+        stdscr.addstr(40, 20, f"Player: Health:{Player.health} | Damage:{Player.damage}", curses.color_pair(1))
+    if Player.opponent != None:
+        if Player.opponent.health <= 0:
+            stdscr.addstr(41, 20, f"You have killed the Enemy!", curses.color_pair(1))
+            Player.opponent = None
+            refresh()
+            time.sleep(3)
+        elif Player.fighting:
+            stdscr.addstr(41, 20, f"Enemy: Health:{Player.opponent.health} | Damage:{Player.opponent.damage}", curses.color_pair(1))
+
+
+
+
     refresh()
     #print(f"Floor {Player.floor}")
 
@@ -610,14 +782,14 @@ def UpdateGame3():
                 print(BASE[y][x], end='')
         print()
 
-
+########################################################################################################### SECTION MAIN
 
 def Main():
-    global total_rooms, room_placements, MAP, BASE, DOORS_CREATING_ROOM, SEEN, count_room, new_floor_pos, obj
+    global total_rooms, room_placements, MAP, BASE, DOORS_CREATING_ROOM, SEEN, count_room, new_floor_pos, obj, game
 
 
     FirstRoomCreation()
-    num_rooms = randint(20, 20)
+    num_rooms = randint(17, 20)
     for i in range(num_rooms):
         CreateNextRooms()
     room_total.room_count = len(room_total.rooms)
@@ -626,15 +798,26 @@ def Main():
     check_restart = CreatePaths()
     if check_restart:
         UpdateSpecificRoom(room_total.rooms[0])
-        
         UpdateGame()
         #UpdateGame3()
-        
         while Player.same_floor:
             time.sleep(0.01)
             PlayerMovement()
+
+            check = CheckAttacking()
+            if not check:
+                game = False
+                break
+
             UpdateCorridorsAndDoors()
             CheckOpenRoom()
+            MoveEnemy()
+
+            check = CheckAttacking()
+            if not check:
+                game = False
+                break
+
             CreateNewFloor()
             UpdateGame()
 
@@ -646,6 +829,7 @@ def Main():
 if __name__ == '__main__':
     Player = CurrentPlayer(1, 1)
     while game:
+        CurrentEnemies = []
         obj = ' · '
         new_floor_pos = (10000, 10000)
         count_room = 0
