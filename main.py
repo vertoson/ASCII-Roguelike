@@ -843,6 +843,12 @@ def Main():
 
 if __name__ == '__main__':
     Player = CurrentPlayer(1, 1)
+    try:
+        stdscr.addch(HEIGHT+5, WIDTH, '1')
+    except curses.error:
+        for i in range(5):
+            print("INCREASE SCREEN SIZE TO PLAY -> CTRL -")
+        game = False
     while game:
         CurrentEnemies = []
         obj = ' · '
