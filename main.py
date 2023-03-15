@@ -111,7 +111,7 @@ def PlayerMovement():
         Player.y += 1
     elif move.lower() == 'd':
         Player.x += 1
-    elif move.lower() == 'f':
+    elif move.lower() == '/':
         game = False
         Player.same_floor = False
     if MAP[Player.y][Player.x] == ' | ' or MAP[Player.y][Player.x] == '---' or MAP[Player.y][Player.x] == ' 0 ': 
